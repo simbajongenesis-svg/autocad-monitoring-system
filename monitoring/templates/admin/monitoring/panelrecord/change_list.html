@@ -1,0 +1,394 @@
+{% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <a href="#"
+       id="print-selected-btn"
+       class="btn btn-primary"
+       target="_blank"
+       style="margin-left: 10px; pointer-events:none; opacity:0.5;">
+        <i class="fas fa-print"></i> Print Selected
+    </a>
+    <a href="#"
+       id="archive-selected-btn"
+       class="btn btn-warning"
+       style="margin-left: 10px; pointer-events:none; opacity:0.5;">
+        <i class="fas fa-box-archive"></i> Archive Selected
+    </a>
+    <!-- 👇 Add this form right here -->
+    <form id="print-form" method="POST" action="{% url 'monitoring:print_selected_records' %}" target="_blank">
+        {% csrf_token %}
+        <input type="hidden" name="ids" id="selected-ids">
+    </form>
+{% endblock %}
+
+{% block result_list %}
+<!-- Month Filter + Count -->
+<div style="margin-bottom: 10px; display:flex; align-items:center; gap:10px;">
+    <label for="month-filter"><strong>Filter/Month:</strong></label>
+    <input type="month" id="month-filter" class="form-control" style="width:200px;">
+    <button id="clear-filter" class="btn btn-secondary btn-sm">Clear</button>
+    <span id="record-count" style="margin-left: auto; font-weight: bold; color:#007bff;"></span>
+</div>
+
+<table id="recordsTable" class="display" style="width:100%">
+    <thead>
+        <tr>
+            <th></th>
+            <th><input type="checkbox" id="select-all"></th>
+            <th>Date</th>
+            <th>FQ#</th>
+            <th>JO#</th>
+            <th>Panel</th>
+            <th>Customer</th>
+            <th>Quantity</th>
+            <th>Received By</th>
+            <th>Box Type</th>
+            <th>Main CB</th>
+            <th>CB Model</th>
+            <th>Color</th>
+            <th>Remarks</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+{% endblock %}
+
+{% block pagination %}{% endblock %}
+
+{% block footer %}
+{{ block.super }}
+
+<script>
+window.jQuery = django.jQuery;
+window.$ = django.jQuery;
+</script>
+
+<!-- DataTables + Icons -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+
+<script>
+(function($) {
+    $(document).ready(function() {
+
+        /* -----------------------------
+           Variables
+        ----------------------------- */
+        let selectedMonth = "";
+
+        /* -----------------------------
+           Initialize DataTable
+        ----------------------------- */
+        const table = $('#recordsTable').DataTable({
+            ajax: {
+                url: "/monitoring/panel-records-json/",
+                data: function(d) {
+                    if (selectedMonth) d.month = selectedMonth;
+                },
+                dataSrc: "data"
+            },
+            paging: true,
+            info: false,
+            searching: true,
+            ordering: true,
+            scrollY: "70vh",
+            scrollCollapse: true,
+            scrollX: true,
+            fixedHeader: true,
+            columns: [
+                { data: "id", visible: false },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function(data, type, row) {
+                        return `<input type="checkbox" class="record-checkbox" value="${row.id}">`;
+                    }
+                },
+                { data: "date" },
+                { data: "fq_number" },
+                { data: "jo_number" },
+                { data: "panel_name" },
+                { data: "customer_name" },
+                { data: "quantity" },
+                { data: "received_by" },
+                {
+                    data: "box_type",
+                    render: function(data) {
+                        return data ? data.toUpperCase() : "";
+                    }
+                },
+                { data: "main_cb" },
+                { data: "cb_model" },
+                {
+                    data: "color",
+                    render: function(data) {
+                        if (!data) return "";
+
+                        const map = {
+                            "gray_wrinkle":       { abbr: "GW", color: "#808080" },   // Gray
+                            "beige_wrinkle":      { abbr: "BW", color: "#f5f5dc" },   // Beige
+                            "black_wrinkle":      { abbr: "BK", color: "#000000" },   // Black
+                            "blue_wrinkle":       { abbr: "BL", color: "#007bff" },   // Blue
+                            "green_wrinkle":      { abbr: "GN", color: "#28a745" },   // Green
+                            "light_gray_wrinkle": { abbr: "LG", color: "#d3d3d3" },   // Light Gray
+                            "orange_wrinkle":     { abbr: "OR", color: "#fd7e14" },   // Orange
+                            "red_wrinkle":        { abbr: "RD", color: "#dc3545" },   // Red
+                            "white_wrinkle":      { abbr: "WH", color: "#ffffff" },   // White
+                            "yellow_wrinkle":     { abbr: "YL", color: "#ffc107" },   // Yellow
+                            "stainless_steel":    { abbr: "SS", color: "#c0c0c0" },   // Stainless Steel
+                            "item_only":          { abbr: "IO", color: "#27a19b" },   // Item Only
+                            "others":             { abbr: "OTH", color: "#6c757d" }   // Others (Neutral gray)
+                        };
+
+                        const key = data.toLowerCase();
+                        const entry = map[key] || { abbr: data.substring(0, 3).toUpperCase(), color: "#000" };
+
+                        // ✅ Define colors that should use black text instead of white
+                        const lightColors = ['#ffffff', '#f5f5dc', '#d3d3d3', '#ffc107', '#c0c0c0'];
+
+                        // Decide text color based on background brightness
+                        const textColor = lightColors.includes(entry.color.toLowerCase()) ? '#000' : '#fff';
+
+                        return `
+                            <span style="
+                                display:inline-block;
+                                background-color:${entry.color};
+                                color:${textColor};
+                                padding:2px 6px;
+                                border-radius:6px;
+                                font-size:12px;
+                                font-weight:bold;
+                                text-transform:uppercase;
+                                min-width:30px;
+                                text-align:center;
+                                border:1px solid #999;
+                            ">
+                                ${entry.abbr}
+                            </span>
+                        `;
+                    }
+                }
+,
+                { data: "remarks" },
+                {
+                    data: "id",
+                    orderable: false,
+                    searchable: false,
+                    render: function(data) {
+                        const editUrl = `/admin/monitoring/panelrecord/${data}/change/`;
+                        const deleteUrl = `/admin/monitoring/panelrecord/${data}/delete/`;
+                        const archiveUrl = `/monitoring/archive-record/${data}/`;
+                        return `
+                            <div style="display:flex; gap:6px; justify-content:center;">
+                                <a href="${editUrl}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="${deleteUrl}" class="btn btn-sm btn-outline-danger" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                <button data-url="${archiveUrl}" class="btn btn-sm btn-outline-warning archive-btn" title="Archive">
+                                    <i class="fas fa-box-archive"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
+                },
+            ],
+            order: [[1, "desc"]],
+            pageLength: 30,
+            lengthMenu: [[15, 30, 60, 100, -1], [15, 30, 60, 100, "All"]],
+        });
+
+        /* -----------------------------
+           Helper: Format month name
+        ----------------------------- */
+        function formatMonth(monthStr) {
+            if (!monthStr) return "All Months";
+            const [year, month] = monthStr.split("-");
+            const date = new Date(year, month - 1);
+            return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+        }
+
+        /* -----------------------------
+           Show record count after load
+        ----------------------------- */
+        table.on('xhr.dt', function(e, settings, json, xhr) {
+            const count = json.data ? json.data.length : 0;
+            const monthText = formatMonth(selectedMonth);
+            $('#record-count')
+                .hide()
+                .text(`📦 ${count} record${count !== 1 ? 's' : ''} for ${monthText}`)
+                .fadeIn(300);
+        });
+
+        /* -----------------------------
+           Month Filter Logic
+        ----------------------------- */
+        $('#month-filter').on('change', function() {
+            selectedMonth = $(this).val();
+            table.ajax.reload();
+        });
+
+        $('#clear-filter').on('click', function() {
+            $('#month-filter').val('');
+            selectedMonth = '';
+            table.ajax.reload();
+        });
+
+        /* -----------------------------
+           Checkbox + Select All
+        ----------------------------- */
+        $('#recordsTable tbody').on('click', 'tr', function(e) {
+            if ($(e.target).is('input, label, a, button, i')) return;
+            const checkbox = $(this).find('.record-checkbox');
+            checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
+        });
+
+        $('#select-all').on('change', function() {
+            const checked = $(this).is(':checked');
+            $('.record-checkbox').prop('checked', checked).trigger('change');
+        });
+
+        /* -----------------------------
+           Print Button Logic
+        ----------------------------- */
+        const printBtn = $('#print-selected-btn');
+        const archiveBtn = $('#archive-selected-btn');
+
+        let alertShown = false;
+
+        $(document).on('change', '.record-checkbox', function() {
+            const checkedBoxes = $('.record-checkbox:checked');
+            const checkedCount = checkedBoxes.length;
+
+            // Only restrict printing to 15, don't affect archive
+            if (checkedCount > 15) {
+                printBtn.css({'pointer-events':'none','opacity':'0.5'});
+            } else if (checkedCount === 15) {
+                printBtn.css({'pointer-events':'auto','opacity':'1'});
+            } else {
+                printBtn.css({'pointer-events':'none','opacity':'0.5'});
+            }
+
+            // Archive button active if 1+ selected
+            if (checkedCount > 0) {
+                archiveBtn.css({'pointer-events':'auto','opacity':'1'});
+            } else {
+                archiveBtn.css({'pointer-events':'none','opacity':'0.5'});
+            }
+        });
+
+        /* -----------------------------
+           Print button logic
+        ----------------------------- */
+        printBtn.on('click', function(e) {
+            e.preventDefault();
+
+            const selected = $('.record-checkbox:checked').map(function() {
+                return this.value;
+            }).get();
+
+            if (selected.length !== 15) {
+                alert('Please select exactly 15 records to print.');
+                return;
+            }
+
+            // open tab early so browser doesn't block it
+            const newTab = window.open('', '_blank');
+            newTab.document.write('<p style="font-family:sans-serif;">Loading print preview...</p>');
+
+            fetch("{% url 'monitoring:print_selected_records' %}", {
+                method: "POST",
+                headers: { "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value },
+                body: new URLSearchParams({ "ids[]": selected })
+            })
+
+            .then(response => {
+                if (!response.ok) throw new Error("Server error");
+                return response.text();
+            })
+            .then(html => {
+                newTab.document.open();
+                newTab.document.write(html);
+                newTab.document.close();
+            })
+            .catch(err => {
+                newTab.close();
+                alert("⚠️ Failed to open print view.");
+                console.error(err);
+            });
+        });
+
+
+        /* -----------------------------
+           Archive Button Logic for Bulk
+        ----------------------------- */
+        archiveBtn.on('click', function(e) {
+            e.preventDefault();
+            const selected = $('.record-checkbox:checked').map(function() {
+                return this.value;
+            }).get();
+
+            if (selected.length === 0) {
+                alert("Please select at least one record to archive.");
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to archive ${selected.length} record(s)?`)) {
+                return;
+            }
+
+            $.ajax({
+                url: "/monitoring/archive-multiple-records/",  // We'll create this next
+                type: "POST",
+                data: { 'ids[]': selected },
+                headers: { "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value },
+                traditional: true, // so Django receives list properly
+                success: function(response) {
+                    if (response.success) {
+                        alert(`✅ ${response.count} record(s) archived successfully!`);
+                        table.ajax.reload();
+                        archiveBtn.css({'pointer-events':'none','opacity':'0.5'});
+                        $('#select-all').prop('checked', false);
+                    } else {
+                        alert("⚠️ Some records could not be archived.");
+                    }
+                },
+                error: function() {
+                    alert("⚠️ Failed to archive records.");
+                }
+            });
+        });
+
+        /* -----------------------------
+           Archive Button Logic
+        ----------------------------- */
+        $('#recordsTable').on('click', '.archive-btn', function() {
+            const url = $(this).data('url');
+            if (confirm("Are you sure you want to archive this record?")) {
+                $.ajax({
+                    url: url,
+                    type: "POST",
+                    headers: { "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value },
+                    success: function(response) {
+                        if (response.success) {
+                            alert("✅ Record archived successfully!");
+                            table.ajax.reload();
+                        }
+                    },
+                    error: function() {
+                        alert("⚠️ Failed to archive record.");
+                    }
+                });
+            }
+        });
+    });
+})(django.jQuery);
+</script>
+
+{% endblock %}

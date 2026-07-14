@@ -1,0 +1,162 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="#"
+           id="print-selected-btn"
+           class="btn btn-primary"
+           target="_blank"
+           style="pointer-events:none; opacity:0.5;">
+           🖨️ Print Selected (15 only)
+        </a>
+    </li>
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // ===============================
+            // Live Search
+            // ===============================
+            const searchInput = document.querySelector('input[name="q"]');
+            if (searchInput) {
+                let timeout = null;
+                searchInput.addEventListener("input", function (e) {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(function () {
+                        const query = e.target.value;
+                        const baseUrl = window.location.pathname;
+                        const params = new URLSearchParams(window.location.search);
+
+                        if (query) {
+                            params.set("q", query);
+                        } else {
+                            params.delete("q");
+                        }
+                        params.delete("p"); // reset pagination
+
+                        const url = baseUrl + "?" + params.toString();
+                        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+                            .then((res) => res.text())
+                            .then((html) => {
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, "text/html");
+
+                                // Replace table body
+                                const newTbody = doc.querySelector("#result_list tbody");
+                                const oldTbody = document.querySelector("#result_list tbody");
+                                if (newTbody && oldTbody) oldTbody.replaceWith(newTbody);
+
+                                // Replace paginator
+                                const newPaginator = doc.querySelector(".pagination");
+                                const oldPaginator = document.querySelector(".pagination");
+                                if (newPaginator && oldPaginator) {
+                                    oldPaginator.innerHTML = newPaginator.innerHTML;
+                                }
+
+                                // Replace info text
+                                const newInfo = doc.querySelector(".paginator ~ .change-list-info, .paginator + .paginator");
+                                const oldInfo = document.querySelector(".paginator ~ .change-list-info, .paginator + .paginator");
+                                if (newInfo && oldInfo) oldInfo.innerHTML = newInfo.innerHTML;
+                            })
+                            .catch((err) => console.error("Live search failed:", err));
+                    }, 500);
+                });
+            }
+
+            // ===============================
+            // Print Selected (15 only)
+            // ===============================
+            const btn = document.getElementById("print-selected-btn");
+
+            function getCheckboxes() {
+                return document.querySelectorAll("input.action-select");
+            }
+
+            function updateButtonState() {
+                const checkboxes = getCheckboxes();
+                const checked = Array.from(checkboxes).filter(cb => cb.checked);
+
+                if (checked.length === 15) {
+                    btn.style.pointerEvents = "auto";
+                    btn.style.opacity = "1";
+                } else {
+                    btn.style.pointerEvents = "none";
+                    btn.style.opacity = "0.5";
+                }
+
+                if (checked.length > 15) {
+                    alert("15 lang ka record e check brader/sister!\nGahi-ag ulo sa buam-buang oi!");
+                    checked.slice(15).forEach(cb => cb.checked = false);
+                }
+            }
+
+            // Initial check
+            updateButtonState();
+
+            // Watch checkboxes
+            document.addEventListener("change", function(e) {
+                if (e.target.matches("input.action-select") || e.target.matches("#action-toggle")) {
+                    updateButtonState();
+                }
+            });
+
+            // Handle print click
+            btn.addEventListener("click", function(event) {
+                event.preventDefault();
+                const checked = Array.from(getCheckboxes()).filter(cb => cb.checked);
+
+                if (checked.length !== 15) {
+                    alert("Please select exactly 15 records to print.");
+                    return;
+                }
+
+                const ids = checked.map(cb => cb.value);
+                const url = "{{ custom_print_url }}?ids=" + ids.join(",");
+                window.open(url, "_blank");
+            });
+
+            // ===============================
+            // Row click toggles checkbox
+            // ===============================
+            document.querySelectorAll("tr input.action-select").forEach(function (checkbox) {
+                const row = checkbox.closest("tr");
+                if (row) {
+                    row.addEventListener("click", function (e) {
+                        if (e.target.type !== "checkbox") {
+                            checkbox.checked = !checkbox.checked;
+                            // Fire change so button updates
+                            checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+{% endblock %}
+
+{% block result_list %}
+    <!-- Per-page dropdown -->
+    <form method="get" id="per-page-form" style="margin-bottom: 10px;">
+        <label for="per-page">Show:</label>
+        <select name="per_page" id="per-page" onchange="this.form.submit()">
+            <option value="15" {% if request.GET.per_page == '15' %}selected{% endif %}>15</option>
+            <option value="30" {% if request.GET.per_page == '30' or not request.GET.per_page %}selected{% endif %}>30</option>
+            <option value="60" {% if request.GET.per_page == '60' %}selected{% endif %}>60</option>
+            <option value="100" {% if request.GET.per_page == '100' %}selected{% endif %}>100</option>
+            <option value="0" {% if request.GET.per_page == '0' %}selected{% endif %}>All</option>
+        </select>
+
+
+        <!-- Keep search/filter params -->
+        {% for key, value in request.GET.items %}
+            {% if key != 'per_page' %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endif %}
+        {% endfor %}
+    </form>
+
+    {{ block.super }}
+{% endblock %}

@@ -1,0 +1,24 @@
+JAZZMIN_SETTINGS = {
+    # ...
+    "side_menu": {
+        "monitoring": {
+            "app": "monitoring",
+            "label": "AutoCad Monitoring",
+            "icon": "fas fa-desktop",
+            "models": [
+                {
+                    "model": "monitoring.panelrecord",
+                    "name": "Panel records",
+                    "icon": "fa-solid fa-table",
+                },
+                {
+                    # ✅ Custom admin URL, stays inside the admin layout
+                    "name": "Archives",
+                    "url": "/admin/monitoring/panelrecord/archives/",
+                    "icon": "fa-solid fa-box-archive",
+                },
+            ],
+        },
+        # (other apps if needed)
+    },
+}

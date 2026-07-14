@@ -1,0 +1,345 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="d-flex align-items-center mb-3">
+    <div class="breadcrumbs w-100">
+        <h1 class="h4 m-0 pr-3 mr-3 border-right d-inline-block">Archives</h1>
+        <a href="{% url 'admin:index' %}">Home</a>
+        &rsaquo;
+        <a href="{% url 'admin:app_list' app_label='monitoring' %}">AutoCad Monitoring</a>
+        &rsaquo;
+        <a href="{% url 'admin:archive_months' %}">Archived Months</a>
+        &rsaquo;
+        Archived Records — {{ month }}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+/* Make the content area wider and cleaner */
+#content {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+}
+
+/* Make the content area wider and cleaner */
+#content {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+}
+
+.table-container {
+    margin-top: 1rem;
+    width: 100%;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: auto; /* scrollable vertically and horizontally */
+    max-height: 75vh; /* 👈 control height, scroll if too long */
+}
+
+.table-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+/* Freeze table header */
+.table-container thead th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    text-align: center;
+    font-weight: 600;
+    z-index: 2; /* keeps header above other rows */
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* Keep table text compact but readable */
+.table-container th,
+.table-container td {
+    white-space: nowrap;
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+}
+
+.table-container tbody tr:hover {
+    background-color: #f1f3f5;
+}
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <a href="{% url 'admin:archive_months' %}" class="btn btn-outline-secondary">
+        <i class="fa fa-chevron-left"></i> Back to Months
+    </a>
+
+    <div class="d-flex flex-wrap gap-2">
+        <a href="#" id="generateCsvBtn" class="btn btn-outline-success">
+            <i class="fas fa-file-csv"></i> Generate CSV
+        </a>
+
+        <button type="button" id="bulkUnarchiveBtn" class="btn btn-outline-warning">
+            <i class="fas fa-box-open"></i> Bulk Unarchive
+        </button>
+
+        <form id="bulkDeleteForm" method="post" action="{% url 'admin:monitoring_panelrecord_changelist' %}" class="d-inline-block">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_selected">
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="fas fa-trash"></i> Bulk Delete
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="table-container">
+    <form id="recordForm">
+        <table class="table table-bordered table-hover table-striped text-center align-middle mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 1%;"><input type="checkbox" id="select-all"></th>
+                    <th>Date</th>
+                    <th>FQ#</th>
+                    <th>JO#</th>
+                    <th>Panel</th>
+                    <th>Customer</th>
+                    <th>Qty</th>
+                    <th>Remarks</th>
+                    <th style="width: 10%;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td><input type="checkbox" class="record-checkbox" name="_selected_action" value="{{ record.id }}"></td>
+                    <td>{{ record.date }}</td>
+                    <td>{{ record.fq_number }}</td>
+                    <td>{{ record.jo_number }}</td>
+                    <td>{{ record.panel_name }}</td>
+                    <td>{{ record.customer_name }}</td>
+                    <td>{{ record.quantity }}</td>
+                    <td>{{ record.remarks }}</td>
+                    <td>
+                        <form action="{% url 'admin:unarchive_record' record.id %}" method="post" class="unarchive-form d-inline">
+                            {% csrf_token %}
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-warning unarchive-btn"
+                                    data-url="{% url 'monitoring:unarchive_record' record.id %}"
+                                    title="Unarchive">
+                                <i class="fas fa-box-open"></i>
+                            </button>
+
+                        </form>
+
+                        <a href="{% url 'admin:monitoring_panelrecord_delete' record.id %}"
+                           class="btn btn-sm btn-outline-danger"
+                           title="Delete this record">
+                           <i class="fas fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="9" class="text-center">No records found for this month.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Confirm unarchive
+    // ✅ AJAX Unarchive Logic
+    document.querySelectorAll('.unarchive-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const url = this.dataset.url;
+            if (!confirm("Are you sure you want to unarchive this record?")) return;
+
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    "X-Requested-With": "XMLHttpRequest",  // 👈 important header
+                },
+            })
+            .then(async response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                // Try parsing JSON safely
+                let data;
+                try {
+                    data = await response.json();
+                } catch {
+                    throw new Error("Invalid JSON response");
+                }
+
+                if (data.success) {
+                    alert("✅ Record unarchived successfully!");
+                    location.reload();
+                } else {
+                    alert("⚠️ Failed to unarchive record.");
+                }
+            })
+            .catch(err => {
+                console.error("Unarchive error:", err);
+                alert("⚠️ Error while unarchiving record.");
+            });
+        });
+    });
+
+    // Confirm CSV generation
+    // ✅ Fixed CSV generation logic (requires at least one selected record)
+    const generateBtn = document.getElementById('generateCsvBtn');
+    generateBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        // Get all checked checkboxes
+        const selected = document.querySelectorAll('#recordForm .record-checkbox:checked');
+        if (selected.length === 0) {
+            alert("⚠️ Please select at least one record to generate CSV.");
+            return;
+        }
+
+        // Collect IDs
+        const selectedIds = Array.from(selected).map(cb => cb.value);
+
+        const month = "{{ month }}";
+        if (confirm(`Generate CSV for ${selected.length} selected record(s) in ${month}?`)) {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            this.disabled = true;
+
+            // ✅ Send selected IDs via POST (safer and specific)
+            fetch("{% url 'monitoring:export_archive_csv' month=month %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ ids: selectedIds })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.blob();
+            })
+            .then(blob => {
+                // Create a temporary download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Archived_Records_${month}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => {
+                console.error("CSV generation error:", err);
+                alert("⚠️ Failed to generate CSV file.");
+            })
+            .finally(() => {
+                this.innerHTML = '<i class="fas fa-file-csv"></i> Generate CSV';
+                this.disabled = false;
+            });
+        }
+    });
+
+
+    // Select/Deselect all
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.record-checkbox');
+    selectAll.addEventListener('change', () => checkboxes.forEach(cb => cb.checked = selectAll.checked));
+
+    // Bulk delete
+    const bulkDeleteForm = document.getElementById('bulkDeleteForm');
+    bulkDeleteForm.addEventListener('submit', function(e) {
+        const selected = document.querySelectorAll('#recordForm .record-checkbox:checked');
+        if (selected.length === 0) {
+            alert("⚠️ Please select at least one record to delete.");
+            e.preventDefault();
+            return;
+        }
+        if (!confirm(`Are you sure you want to delete ${selected.length} record(s)? This action is permanent.`)) {
+            e.preventDefault();
+            return;
+        }
+        selected.forEach(cb => {
+            const clone = cb.cloneNode(true);
+            clone.checked = true;
+            clone.disabled = false;
+            bulkDeleteForm.appendChild(clone);
+        });
+    });
+});
+// ✅ Bulk Unarchive Logic
+const bulkUnarchiveBtn = document.getElementById("bulkUnarchiveBtn");
+bulkUnarchiveBtn.addEventListener("click", function () {
+    const selected = document.querySelectorAll('#recordForm .record-checkbox:checked');
+    if (selected.length === 0) {
+        alert("⚠️ Please select at least one record to unarchive.");
+        return;
+    }
+
+    const selectedIds = Array.from(selected).map(cb => cb.value);
+
+    if (!confirm(`Unarchive ${selectedIds.length} selected record(s)?`)) return;
+
+    bulkUnarchiveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Unarchiving...';
+    bulkUnarchiveBtn.disabled = true;
+
+    fetch("{% url 'monitoring:bulk_unarchive_records' %}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+            "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify({ ids: selectedIds })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(`✅ Successfully unarchived ${data.count} record(s).`);
+            location.reload();
+        } else {
+            alert("⚠️ Failed to unarchive records.");
+        }
+    })
+    .catch(err => {
+        console.error("Bulk unarchive error:", err);
+        alert("⚠️ Error while unarchiving records.");
+    })
+    .finally(() => {
+        bulkUnarchiveBtn.innerHTML = '<i class="fas fa-box-open"></i> Bulk Unarchive';
+        bulkUnarchiveBtn.disabled = false;
+    });
+});
+// for row click
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.table-container tbody tr');
+
+    rows.forEach(row => {
+        row.addEventListener('click', function(event) {
+            // ignore clicks directly on a checkbox or buttons (like "Edit" or "Delete")
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'BUTTON' || event.target.closest('a')) {
+                return;
+            }
+
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked; // toggle
+                row.classList.toggle('table-active', checkbox.checked); // optional highlight
+            }
+        });
+    });
+
+    // optional: highlight selected rows on load
+    document.querySelectorAll('.table-container tbody input[type="checkbox"]').forEach(cb => {
+        if (cb.checked) cb.closest('tr').classList.add('table-active');
+    });
+});
+</script>
+{% endblock %}

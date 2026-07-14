@@ -1,0 +1,6 @@
+/* Target only login page logo */
+.login-logo img {
+    max-width: 300px !important;  /* shrink width */
+    height: auto !important;      /* keep proportions */
+}
+

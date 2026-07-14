@@ -1,0 +1,133 @@
+{% load static custom_filters %}
+{% load color_badges %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel Records Printout</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+      @page { size: A4 landscape; margin: 0; }
+
+      body {
+        font-family: Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        font-size: 10px;
+        padding: 0.5cm;
+      }
+      .header {
+        text-align: center;
+        font-weight: bold;
+        font-size: 16px;
+        margin-bottom: 5px;
+        color: #0070c0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 3px solid #0070c0;
+        table-layout: fixed; /* 👈 keeps widths respected */
+      }
+      th, td {
+        border: 1px solid #0070c0;
+        padding: 4px;
+        text-align: center;
+        word-wrap: break-word;
+      }
+      th {
+        background: white;
+        color: #0070c0;
+        text-transform: uppercase;
+      }
+      td { background: #EBF8FF; }
+      tbody tr:nth-child(even) td { background: #fff; }
+
+      /* column widths */
+      th:nth-child(1), td:nth-child(1) { width: 7%; }   /* DATE */
+      th:nth-child(2), td:nth-child(2) { width: 5%; }   /* F.O. # */
+      th:nth-child(3), td:nth-child(3) { width: 5%; }   /* J.O. # */
+      th:nth-child(4), td:nth-child(4) { width: 13%; }  /* PANEL NAME */
+      th:nth-child(5), td:nth-child(5) { width: 13%; }  /* CUSTOMER NAME */
+      th:nth-child(6), td:nth-child(6) { width: 4%; }   /* QTY. */
+      th:nth-child(7), td:nth-child(7) { width: 5%; }   /* BB */
+      th:nth-child(8), td:nth-child(8) { width: 10%; }  /* BOX TYPE */
+      th:nth-child(9), td:nth-child(9) { width: 13%; }  /* MAIN QTY BRS */
+      th:nth-child(10), td:nth-child(10) { width: 13%; }/* CB MODEL */
+      th:nth-child(11), td:nth-child(11) { width: 5%; } /* COLOR */
+      th:nth-child(12), td:nth-child(12) { width: 12%; }/* REMARKS */
+
+      /* force exactly 15 rows per page */
+      tbody tr {
+        height: calc((100vh - 120px) / 15); /* 👈 dynamic row height */
+      }
+
+      .button-container {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .button-container button {
+        padding: 10px 20px;
+        border: none;
+        color: white;
+        cursor: pointer;
+        border-radius: 5px;
+        font-weight: bold;
+      }
+      .cancel-btn { background: #f44336; }
+      .print-btn { background: #4CAF50; }
+      @media print { .button-container { display: none; } }
+  </style>
+
+</head>
+<body onload="window.print()">
+  <div class="button-container">
+    <button onclick="window.print()" class="print-btn">Print</button>
+    <button onclick="window.close()" class="cancel-btn">Cancel</button>
+  </div>
+
+  <div class="header">AUTOCAD MONITORING</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>DATE</th>
+        <th>F.O. #</th>
+        <th>J.O. #</th>
+        <th>PANEL NAME</th>
+        <th>CUSTOMER NAME</th>
+        <th>QTY.</th>
+        <th>BB</th>
+        <th>BOX TYPE</th>
+        <th>MAIN QTY BRS</th>
+        <th>CB MODEL</th>
+        <th>COLOR</th>
+        <th>REMARKS</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr>
+        <td>{{ record.date|date:"n/j/Y" }}</td>
+        <td>{{ record.fq_number }}</td>
+        <td>{{ record.jo_number }}</td>
+        <td>{{ record.panel_name|upper }}</td>
+        <td>{{ record.customer_name|title }}</td>
+        <td>{{ record.quantity }}</td>
+        <td>{{ record.received_by }}</td>
+        <td>{{ record.box_type|upper }}</td>
+        <td>{{ record.main_cb|title }}</td>
+        <td>{{ record.cb_model|title }}</td>
+        <td>
+            {% for word in record.color.split %}
+              {{ word|color_badge|safe }}
+            {% endfor %}
+        </td>
+
+        <td>{{ record.remarks|title }}</td>
+      </tr>
+      {% endfor %}
+
+      {# ✅ Pad with blank rows to always reach 15 #}

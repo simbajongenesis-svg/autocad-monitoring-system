@@ -1,0 +1,30 @@
+
+###  Done
+
+* Created new app: **monitoring**
+* Added model: **PanelRecord** (with all fields: fq\_number, jo\_number, box\_type, color, etc.)
+* Registered **PanelRecord** in `admin.py` (list\_display, filters, search, ordering).
+* Jazzmin settings updated → Sidebar shows **Monitoring** with icon.
+* **Panel model removed** (only Panel Records remain).
+
+---
+
+### Next Possible Steps
+
+1. **Admin Improvements (optional)**
+
+   * Add custom filters (like by customer\_name).
+   * Make date picker nicer.
+   * Export/import Panel Records.
+
+2. **Frontend (like your Customer app)**
+
+   * Create Panel Records **list view with DataTable**.
+   * Add **Bootstrap modal form** for adding/editing records.
+   * AJAX submit + validation (no full page reload).
+
+3. **Extras (future)**
+
+   * Reports (filter by date range, box type, customer, etc.).
+   * Dashboard widgets (counts, charts of panels per customer).
+   * Reintroduce **Panel model** (as master list) when needed.

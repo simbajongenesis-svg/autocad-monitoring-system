@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Customers</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #333; padding: 6px; text-align: left; }
+        th { background: #f0f0f0; }
+        .noprint { margin-bottom: 15px; }
+        @media print {
+            .noprint { display: none; }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="noprint">
+        <button onclick="window.print()">🖨️ Print This Page</button>
+    </div>
+
+    <h2>All Customers</h2>
+    <table>
+        <tr>
+            <th>Full Name / Company</th>
+            <th>Care Of</th>
+            <th>Address</th>
+            <th>Contact</th>
+            <th>Notes</th>
+        </tr>
+        {% for customer in customers %}
+        <tr>
+            <td>{{ customer.fullname_or_companyname }}</td>
+            <td>{{ customer.care_of }}</td>
+            <td>{{ customer.address }}</td>
+            <td>{{ customer.contact_number }}</td>
+            <td>{{ customer.notes_or_remarks }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

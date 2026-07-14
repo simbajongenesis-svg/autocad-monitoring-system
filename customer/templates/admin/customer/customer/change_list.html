@@ -1,0 +1,169 @@
+{% extends "admin/change_list.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+{% endblock %}
+
+
+{% block object-tools-items %}
+    {# ✅ Keep the default Add Customer button #}
+    {{ block.super }}
+
+    {# ✅ Add our "Print All" button beside it #}
+    <li>
+        <a href="{{ print_all_url }}" class="btn btn-primary" target="_blank" style="margin-left: 5px;">
+            🖨️ E print Tanan
+        </a>
+    </li>
+{% endblock %}
+
+
+{% block content %}
+<div class="card shadow-sm mt-3">
+  <div class="card-header">
+    <h5 class="mb-0">Customer Records</h5>
+  </div>
+
+  <div class="card-body">
+    <table id="customerTable" class="table table-striped table-bordered nowrap" style="width:100%">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Care Of</th>
+          <th>Address</th>
+          <th>Contact</th>
+          <th>Notes</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block extrahead %}
+
+<style>
+    .print-btn {
+        width: 100% !important;
+        height: 55px !important;
+        font-size: 16px;
+        font-weight: bold;
+        display: flex !important;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+</style>
+
+<!-- Print Options Modal -->
+<div class="modal fade" id="printOptionsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content p-4">
+
+      <h4 class="fw-bold text-center mb-4">Pagpili! Tan-awon natug pilion ba ka niya! waa ka!</h4>
+
+      <div class="d-grid gap-3">
+
+        <a id="print-one" target="_blank"
+           class="btn btn-outline-primary print-btn">
+          <i class="fa fa-file-text"></i> &nbsp;&nbsp;1 whole landscape
+        </a>
+
+        <a id="print-two" target="_blank"
+           class="btn btn-outline-secondary print-btn">
+          <i class="fa fa-file-text"></i> &nbsp;&nbsp;1/2 × A4 Portrait
+        </a>
+
+        <a id="print-four" target="_blank"
+           class="btn btn-outline-info print-btn">
+          <i class="fa fa-file-text"></i> &nbsp;&nbsp;1/4 size × A4 
+        </a>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+{{ block.super }}
+
+<!-- ✅ Load dependencies in correct order -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+
+<script>
+jQuery(function($) {
+    $('#customerTable').DataTable({
+        ajax: {
+            url: "{% url 'customers_json' %}",
+            dataSrc: "data"
+        },
+        columns: [
+            { data: "fullname_or_companyname", title: "Name" },
+            { data: "care_of", title: "Care Of" },
+            { data: "address", title: "Address" },
+            { data: "contact_number", title: "Contact" },
+            { data: "notes_or_remarks", title: "Notes" },
+            {
+                data: "id",
+                title: "Actions",
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row) {
+                    return `
+                        <div class="d-flex gap-2">
+                            <a href="/admin/customer/customer/${data}/change/" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit"></i>
+                            </a>
+
+                            <a href="/admin/customer/customer/${data}/delete/" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-trash"></i>
+                            </a>
+
+                            <a href="#" data-id="${data}" class="btn btn-sm btn-outline-success print-modal-btn">
+                                <i class="fas fa-print"></i>
+                            </a>
+                        </div>
+                    `;
+                }
+
+            }
+        ],
+        responsive: true,
+        pageLength: 10,
+        language: {
+            searchPlaceholder: "Dinhi E Search Ha!",
+            search: ""
+        },
+        createdRow: function(row, data, dataIndex) {
+            // Optional: make row look clickable (without dropdown)
+            $(row).addClass('align-middle');
+        }
+    });
+});
+
+$(document).on("click", ".print-modal-btn", function (e) {
+    e.preventDefault();
+
+    const id = $(this).data("id");
+
+    $("#print-one").attr("href", `/admin/customer/customer/${id}/print/`);
+
+    $("#print-two").attr("href", `/admin/customer/customer/${id}/print/2copy/`);
+    $("#print-four").attr("href", `/admin/customer/customer/${id}/print/4copy/`);
+
+
+    const modal = new bootstrap.Modal(document.getElementById("printOptionsModal"));
+    modal.show();
+});
+
+</script>
+
+{% endblock %}

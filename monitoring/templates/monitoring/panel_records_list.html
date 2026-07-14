@@ -1,0 +1,72 @@
+{# monitoring/templates/monitoring/panel_records_list.html #}
+{% block content %}
+<h2>Panel Records</h2>
+
+<div class="table-responsive">
+  <table id="panelRecordsTable" class="display responsive nowrap" style="width:100%">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>FQ Number</th>
+        <th>JO Number</th>
+        <th>Panel Name</th>
+        <th>Customer Name</th>
+        <th>Quantity</th>
+        <th>Received By</th>
+        <th>Box Type</th>
+        <th>Main CB</th>
+        <th>CB Model</th>
+        <th>Color</th>
+        <th>Remarks</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr>
+        <td>{{ record.date }}</td>
+        <td>{{ record.fq_number }}</td>
+        <td>{{ record.jo_number }}</td>
+        <td>{{ record.panel_name }}</td>
+        <td>{{ record.customer_name }}</td>
+        <td>{{ record.quantity }}</td>
+        <td>{{ record.received_by }}</td>
+        <td>{{ record.box_type }}</td>
+        <td>{{ record.main_cb }}</td>
+        <td>{{ record.cb_model }}</td>
+        <td>{{ record.color }}</td>
+        <td>{{ record.remarks }}</td>
+        <td>
+          <button class="btn btn-sm btn-primary">Edit</button>
+          <button class="btn btn-sm btn-info">View</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- DataTables CSS/JS -->
+<link rel="stylesheet" 
+      href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" 
+      href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('#panelRecordsTable').DataTable({
+        responsive: true,
+        pageLength: 10,
+        lengthMenu: [5, 10, 25, 50, 100],
+        language: {
+            search: "Search records:"
+        }
+    });
+});
+</script>
+
+{% endblock %}

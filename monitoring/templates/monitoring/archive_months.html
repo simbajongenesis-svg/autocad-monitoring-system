@@ -1,0 +1,88 @@
+{% extends "admin/base_site.html" %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <h1 class="h4 m-0 pr-3 mr-3 border-right" style="display: inline;">Archives</h1>
+    <a href="{% url 'admin:index' %}">Home</a>
+    &rsaquo;
+    <a href="{% url 'admin:app_list' app_label='monitoring' %}">AutoCad Monitoring</a>
+    &rsaquo;
+    Archived Months
+</div>
+{% endblock %}
+
+{% block content %}
+
+<h5 class="">Import Backup CSV</h5>
+<table class="table table-hover table-striped mb-4">
+    <thead>
+        <tr>
+            <th style="width: 60%;">File Upload</th>
+            <th class="text-center" style="width: 20%;">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+                <form id="import-form" method="post" action="{% url 'monitoring:admin_import_csv' %}" enctype="multipart/form-data" class="m-0">
+                    {% csrf_token %}
+                    <input type="file" name="csv_file" id="csv-file-input" accept=".csv" class="form-control form-control-sm" required>
+                </form>
+            </td>
+            <td class="text-center align-middle">
+                <button form="import-form" type="submit" class="btn btn-success btn-sm">
+                    <i class="fas fa-upload"></i> Execute Import
+                </button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<h5 class="">Archived Records by Month</h5>
+<table class="table table-hover table-striped mb-0">
+    <thead>
+        <tr>
+            <th class="text-left" style="width: 60%;">Month</th>
+            <th class="text-center" style="width: 20%;">Total Archived</th>
+            <th class="text-center" style="width: 20%;">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for month in months %}
+        <tr>
+            <td class="text-left align-middle">{{ month.month }}</td>
+            <td class="text-center align-middle">{{ month.count }}</td>
+            <td class="text-center align-middle">
+                <a class="btn btn-sm btn-outline-primary"
+                   href="{% url 'admin:archive_records' month=month.month %}">
+                    <i class="fas fa-search"></i> View Records
+                </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3" class="text-center">No records have been archived yet.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+document.getElementById("import-form").addEventListener("submit", function(e) {
+    const submitButton = e.target.querySelector('button[type="submit"], [form="import-form"]');
+
+    const confirmImport = confirm("⚠️ You are about to import a backup CSV. This will create new records and will NOT update existing ones. Proceed?");
+    
+    if (!confirmImport) {
+        e.preventDefault();
+        return;
+    }
+
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing...';
+
+    alert("✅ CSV import started. The page will reload after completion. Please wait.");
+});
+</script>
+
+{% endblock %}
